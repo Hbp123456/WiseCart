@@ -1,0 +1,66 @@
+const startRecordingButton = document.getElementById('startRecording');
+const stopRecordingButton = document.getElementById('stopRecording');
+const uploadButton = document.getElementById('uploadButton');
+const audioElement = document.getElementById('audioElement');
+let mediaRecorder;
+let audioChunks = [];
+
+startRecordingButton.addEventListener('click', startRecording);
+stopRecordingButton.addEventListener('click', stopRecording);
+uploadButton.addEventListener('click', uploadAudio);
+
+function startRecording() {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            mediaRecorder = new MediaRecorder(stream);
+            mediaRecorder.ondataavailable = handleDataAvailable;
+            mediaRecorder.start();
+            startRecordingButton.disabled = true;
+            stopRecordingButton.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error accessing microphone:', error);
+        });
+}
+
+function stopRecording() {
+    mediaRecorder.stop();
+    startRecordingButton.disabled = false;
+    stopRecordingButton.disabled = true;
+}
+
+function handleDataAvailable(event) {
+    audioChunks.push(event.data);
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+    audioElement.src = URL.createObjectURL(audioBlob);
+    audioElement.style.display = 'block';
+    uploadButton.disabled = false;
+}
+
+function uploadAudio() {
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+    const reader = new FileReader();
+    reader.readAsDataURL(audioBlob);
+    reader.onloadend = function() {
+        const base64data = reader.result;
+        sendEmail(base64data);
+    }
+}
+
+function sendEmail(audioData) {
+    Email.send({
+        SecureToken: "YOUR_SECURE_SMTPJS_TOKEN",
+        To: 'hbpatel856@gmail.com',
+        From: "your_email@example.com",
+        Subject: "New Shopping Request",
+        Body: "You have a new shopping request.",
+        Attachments: [
+            {
+                name: "request.wav",
+                data: audioData
+            }
+        ]
+    }).then(
+        message => alert("Audio file sent successfully!")
+    );
+}
